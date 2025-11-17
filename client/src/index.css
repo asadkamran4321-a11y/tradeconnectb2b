@@ -1,0 +1,164 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(30, 14.3%, 4.1%);
+  --muted: hsl(210, 40%, 98%);
+  --muted-foreground: hsl(215, 25%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(30, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(30, 14.3%, 4.1%);
+  --border: hsl(214, 32%, 91%);
+  --input: hsl(214, 32%, 91%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(210, 40%, 98%);
+  --secondary-foreground: hsl(222, 84%, 10%);
+  --accent: hsl(210, 40%, 98%);
+  --accent-foreground: hsl(222, 84%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(207, 90%, 54%);
+  --radius: 0.5rem;
+  
+  /* Custom colors for B2B marketplace */
+  --success: hsl(142, 76%, 36%);
+  --success-foreground: hsl(60, 9.1%, 97.8%);
+  --warning: hsl(38, 92%, 50%);
+  --warning-foreground: hsl(60, 9.1%, 97.8%);
+  --neutral-light: hsl(210, 40%, 98%);
+  --neutral-medium: hsl(215, 25%, 44.7%);
+  --neutral-dark: hsl(222, 84%, 10%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(207, 90%, 54%);
+  --radius: 0.5rem;
+  
+  /* Custom colors for dark mode */
+  --success: hsl(142, 76%, 36%);
+  --success-foreground: hsl(0, 0%, 98%);
+  --warning: hsl(38, 92%, 50%);
+  --warning-foreground: hsl(0, 0%, 98%);
+  --neutral-light: hsl(240, 3.7%, 15.9%);
+  --neutral-medium: hsl(240, 5%, 64.9%);
+  --neutral-dark: hsl(0, 0%, 98%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-success {
+    color: var(--success);
+  }
+  
+  .text-success-foreground {
+    color: var(--success-foreground);
+  }
+  
+  .bg-success {
+    background-color: var(--success);
+  }
+  
+  .bg-success-foreground {
+    background-color: var(--success-foreground);
+  }
+  
+  .text-warning {
+    color: var(--warning);
+  }
+  
+  .text-warning-foreground {
+    color: var(--warning-foreground);
+  }
+  
+  .bg-warning {
+    background-color: var(--warning);
+  }
+  
+  .bg-warning-foreground {
+    background-color: var(--warning-foreground);
+  }
+  
+  .text-neutral-light {
+    color: var(--neutral-light);
+  }
+  
+  .text-neutral-medium {
+    color: var(--neutral-medium);
+  }
+  
+  .text-neutral-dark {
+    color: var(--neutral-dark);
+  }
+  
+  .bg-neutral-light {
+    background-color: var(--neutral-light);
+  }
+  
+  .bg-neutral-medium {
+    background-color: var(--neutral-medium);
+  }
+  
+  .bg-neutral-dark {
+    background-color: var(--neutral-dark);
+  }
+  
+  /* Ensure grid layout works properly */
+  .grid {
+    display: grid !important;
+  }
+  
+  .grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+  
+  .grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  
+  .grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  
+  .grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+  
+  .grid-cols-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+  
+  .grid-cols-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  }
+}

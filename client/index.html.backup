@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>TradeConnect - B2B Marketplace | Verified Suppliers & Quality Products</title>
+    <meta name="description" content="Leading B2B marketplace connecting suppliers and buyers worldwide. Find quality products from verified suppliers and manufacturers. Professional wholesale trading platform." />
+    <meta name="keywords" content="B2B marketplace, wholesale, suppliers, manufacturers, business trading, verified suppliers, bulk orders, professional products" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="TradeConnect" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TradeConnect" />
+    <meta property="og:title" content="TradeConnect - B2B Marketplace | Verified Suppliers & Quality Products" />
+    <meta property="og:description" content="Leading B2B marketplace connecting suppliers and buyers worldwide. Find quality products from verified suppliers and manufacturers." />
+    <meta property="og:image" content="/api/placeholder/1200/630" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TradeConnect - B2B Marketplace" />
+    <meta name="twitter:description" content="Leading B2B marketplace connecting suppliers and buyers worldwide." />
+    <meta name="twitter:image" content="/api/placeholder/1200/630" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="/" />
+    
+    <!-- Preconnect to improve loading speed -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "TradeConnect",
+      "description": "Leading B2B marketplace connecting suppliers and buyers worldwide",
+      "url": "/",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "/products?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "TradeConnect",
+        "description": "Professional B2B marketplace platform"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
+    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
+  </body>
+</html>
