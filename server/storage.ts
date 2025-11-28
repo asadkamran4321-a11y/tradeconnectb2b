@@ -3225,7 +3225,7 @@ export class MemStorage implements IStorage {
   }
 }
 
-const useFirestore = !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_PROJECT_ID);
+const useFirestore = (process.env.USE_FIRESTORE === 'true') && !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_APPLICATION_CREDENTIALS);
 
 let storageImpl: IStorage;
 
@@ -3237,7 +3237,8 @@ if (useFirestore) {
       if (svc) {
         admin.initializeApp({ credential: admin.credential.cert(svc) });
       } else {
-        admin.initializeApp();
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        admin.initializeApp(projectId ? { projectId } : {} as any);
       }
     }
     db = admin.firestore();
@@ -3245,7 +3246,8 @@ if (useFirestore) {
     db = undefined;
   }
   if (!db) {
-    throw new Error("Firestore initialization failed");
+    console.error("Firestore initialization failed; falling back to in-memory storage");
+    storageImpl = new MemStorage();
   } else {
 
   const fdb = db as FirebaseFirestore.Firestore;
@@ -3501,7 +3503,7 @@ if (useFirestore) {
   storageImpl = new FirestoreStorage();
   }
 } else {
-  throw new Error("Firestore is required");
+  storageImpl = new MemStorage();
 }
 
 export const storage: IStorage = storageImpl;
