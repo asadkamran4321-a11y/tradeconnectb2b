@@ -412,9 +412,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('✅ Password reset email sent successfully to:', email);
       }
       
-      res.json({ 
+      const baseResponse: any = {
         message: "If an account with this email exists, you will receive a password reset link."
-      });
+      };
+
+      if (app.get('env') === 'development') {
+        const devResetLink = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+        const devDirectLink = `${req.protocol}://${req.get('host')}/reset-direct/${resetToken}`;
+        baseResponse.debugToken = resetToken;
+        baseResponse.debugResetLink = devResetLink;
+        baseResponse.debugDirectLink = devDirectLink;
+      }
+
+      res.json(baseResponse);
     } catch (error) {
       res.status(400).json({ message: (error instanceof Error ? error.message : "An error occurred") });
     }

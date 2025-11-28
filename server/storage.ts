@@ -6,6 +6,7 @@ import {
   type InsertProduct, type InsertInquiry, type InsertSavedProduct, type InsertFollowedSupplier,
   type InsertNotification, type InsertAdminNotification, type InsertBlogPost, type InsertProductReview, type InsertReviewComment
 } from "@shared/schema";
+import admin from "firebase-admin";
 
 export interface IStorage {
   // User operations
@@ -202,11 +203,7 @@ export class MemStorage implements IStorage {
   private currentReviewId = 1;
   private currentReviewCommentId = 1;
 
-  constructor() {
-    this.initializeData();
-    this.initializeAdminUser();
-    this.initializeTestData();
-  }
+  constructor() {}
 
   private initializeData() {
     // Initialize some categories
@@ -3119,4 +3116,282 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+const useFirestore = !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_PROJECT_ID);
+
+let storageImpl: IStorage;
+
+if (useFirestore) {
+  let db: FirebaseFirestore.Firestore | undefined;
+  try {
+    const svc = process.env.FIREBASE_SERVICE_ACCOUNT ? JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, "base64").toString("utf8")) : undefined;
+    if (!admin.apps.length) {
+      if (svc) {
+        admin.initializeApp({ credential: admin.credential.cert(svc) });
+      } else {
+        admin.initializeApp();
+      }
+    }
+    db = admin.firestore();
+  } catch {
+    db = undefined;
+  }
+  if (!db) {
+    throw new Error("Firestore initialization failed");
+  } else {
+
+  class FirestoreStorage extends MemStorage {
+    private usersCol = db.collection("users");
+    private suppliersCol = db.collection("suppliers");
+    private buyersCol = db.collection("buyers");
+    private categoriesCol = db.collection("categories");
+    private productsCol = db.collection("products");
+    private inquiriesCol = db.collection("inquiries");
+    private notificationsCol = db.collection("notifications");
+    private countersCol = db.collection("counters");
+
+    private async nextId(key: string): Promise<number> {
+      try {
+        const id = await db.runTransaction(async t => {
+          const doc = this.countersCol.doc(key);
+          const snap = await t.get(doc);
+          const current = snap.exists ? (snap.data() as any).current || 0 : 0;
+          const next = current + 1;
+          t.set(doc, { current: next }, { merge: true });
+          return next as number;
+        });
+        return id;
+      } catch {
+        return Date.now();
+      }
+    }
+
+    async createUser(user: InsertUser): Promise<User> {
+      const id = await this.nextId("users");
+      const doc = { ...user, id, createdAt: new Date() } as any;
+      await this.usersCol.doc(String(id)).set(doc);
+      return doc as User;
+    }
+
+    async getUserById(id: number): Promise<User | undefined> {
+      const snap = await this.usersCol.doc(String(id)).get();
+      return snap.exists ? (snap.data() as User) : undefined;
+    }
+
+    async getUserByEmail(email: string): Promise<User | undefined> {
+      const qs = await this.usersCol.where("email", "==", email).limit(1).get();
+      return qs.empty ? undefined : (qs.docs[0].data() as User);
+    }
+
+    async getUserByEmailVerificationToken(token: string): Promise<User | undefined> {
+      const qs = await this.usersCol.where("emailVerificationToken", "==", token).limit(1).get();
+      return qs.empty ? undefined : (qs.docs[0].data() as User);
+    }
+
+    async getUserByPasswordResetToken(token: string): Promise<User | undefined> {
+      const qs = await this.usersCol.where("passwordResetToken", "==", token).limit(1).get();
+      return qs.empty ? undefined : (qs.docs[0].data() as User);
+    }
+
+    async updateUser(id: number, data: Partial<User>): Promise<User | undefined> {
+      const ref = this.usersCol.doc(String(id));
+      const snap = await ref.get();
+      if (!snap.exists) return undefined;
+      const updated = { ...(snap.data() as User), ...data, updatedAt: new Date() };
+      await ref.set(updated, { merge: true });
+      return updated as User;
+    }
+
+    async deleteUser(id: number): Promise<boolean> {
+      await this.usersCol.doc(String(id)).delete();
+      return true;
+    }
+
+    async createSupplier(supplier: InsertSupplier): Promise<Supplier> {
+      const id = await this.nextId("suppliers");
+      const doc = { ...supplier, id, createdAt: new Date(), updatedAt: new Date(), verified: supplier["verified"] ?? false, status: supplier["status"] ?? "active" } as any;
+      await this.suppliersCol.doc(String(id)).set(doc);
+      return doc as Supplier;
+    }
+
+    async getSupplierById(id: number): Promise<Supplier | undefined> {
+      const snap = await this.suppliersCol.doc(String(id)).get();
+      return snap.exists ? (snap.data() as Supplier) : undefined;
+    }
+
+    async getSupplierByUserId(userId: number): Promise<Supplier | undefined> {
+      const qs = await this.suppliersCol.where("userId", "==", userId).limit(1).get();
+      return qs.empty ? undefined : (qs.docs[0].data() as Supplier);
+    }
+
+    async getSuppliers(search?: string, location?: string): Promise<Supplier[]> {
+      let qs = await this.suppliersCol.get();
+      let list = qs.docs.map(d => d.data() as Supplier);
+      if (search) list = list.filter(s => (s.companyName || "").toLowerCase().includes(search.toLowerCase()) || (s.description || "").toLowerCase().includes(search.toLowerCase()));
+      if (location) list = list.filter(s => (s.location || "").toLowerCase().includes(location.toLowerCase()));
+      return list;
+    }
+
+    async updateSupplier(id: number, data: Partial<Supplier>): Promise<Supplier | undefined> {
+      const ref = this.suppliersCol.doc(String(id));
+      const snap = await ref.get();
+      if (!snap.exists) return undefined;
+      const updated = { ...(snap.data() as Supplier), ...data, updatedAt: new Date() };
+      await ref.set(updated, { merge: true });
+      return updated as Supplier;
+    }
+
+    async createBuyer(buyer: InsertBuyer): Promise<Buyer> {
+      const id = await this.nextId("buyers");
+      const doc = { ...buyer, id, createdAt: new Date(), updatedAt: new Date() } as any;
+      await this.buyersCol.doc(String(id)).set(doc);
+      return doc as Buyer;
+    }
+
+    async getBuyerById(id: number): Promise<Buyer | undefined> {
+      const snap = await this.buyersCol.doc(String(id)).get();
+      return snap.exists ? (snap.data() as Buyer) : undefined;
+    }
+
+    async getBuyerByUserId(userId: number): Promise<Buyer | undefined> {
+      const qs = await this.buyersCol.where("userId", "==", userId).limit(1).get();
+      return qs.empty ? undefined : (qs.docs[0].data() as Buyer);
+    }
+
+    async getAllBuyers(): Promise<Buyer[]> {
+      const qs = await this.buyersCol.get();
+      return qs.docs.map(d => d.data() as Buyer);
+    }
+
+    async createCategory(category: InsertCategory): Promise<Category> {
+      const id = await this.nextId("categories");
+      const doc = { ...category, id } as any;
+      await this.categoriesCol.doc(String(id)).set(doc);
+      return doc as Category;
+    }
+
+    async getCategoryById(id: number): Promise<Category | undefined> {
+      const snap = await this.categoriesCol.doc(String(id)).get();
+      return snap.exists ? (snap.data() as Category) : undefined;
+    }
+
+    async getCategories(): Promise<Category[]> {
+      const qs = await this.categoriesCol.get();
+      return qs.docs.map(d => d.data() as Category);
+    }
+
+    async getAllCategories(): Promise<Category[]> {
+      return this.getCategories();
+    }
+
+    async updateCategory(id: number, updates: Partial<Category>): Promise<Category | undefined> {
+      const ref = this.categoriesCol.doc(String(id));
+      const snap = await ref.get();
+      if (!snap.exists) return undefined;
+      const updated = { ...(snap.data() as Category), ...updates };
+      await ref.set(updated, { merge: true });
+      return updated as Category;
+    }
+
+    async deleteCategory(id: number): Promise<boolean> {
+      await this.categoriesCol.doc(String(id)).delete();
+      return true;
+    }
+
+    async createProduct(product: InsertProduct): Promise<Product> {
+      const id = await this.nextId("products");
+      const doc = { ...product, id, createdAt: new Date(), updatedAt: new Date() } as any;
+      await this.productsCol.doc(String(id)).set(doc);
+      return doc as Product;
+    }
+
+    async getProductById(id: number): Promise<Product | undefined> {
+      const snap = await this.productsCol.doc(String(id)).get();
+      return snap.exists ? (snap.data() as Product) : undefined;
+    }
+
+    async updateProduct(id: number, data: Partial<Product>): Promise<Product | undefined> {
+      const ref = this.productsCol.doc(String(id));
+      const snap = await ref.get();
+      if (!snap.exists) return undefined;
+      const updated = { ...(snap.data() as Product), ...data, updatedAt: new Date() };
+      await ref.set(updated, { merge: true });
+      return updated as Product;
+    }
+
+    async getProducts(filters: any = {}): Promise<Product[]> {
+      let qs = await this.productsCol.get();
+      let list = qs.docs.map(d => d.data() as Product);
+      if (filters.status) list = list.filter(p => p["status"] === filters.status);
+      if (filters.supplierId) list = list.filter(p => p.supplierId === filters.supplierId);
+      if (filters.categoryId) list = list.filter(p => p["categoryId"] === filters.categoryId);
+      return list;
+    }
+
+    async createInquiry(inquiry: InsertInquiry): Promise<Inquiry> {
+      const id = await this.nextId("inquiries");
+      const doc = { ...inquiry, id, createdAt: new Date() } as any;
+      await this.inquiriesCol.doc(String(id)).set(doc);
+      return doc as Inquiry;
+    }
+
+    async getInquiryById(id: number): Promise<Inquiry | undefined> {
+      const snap = await this.inquiriesCol.doc(String(id)).get();
+      return snap.exists ? (snap.data() as Inquiry) : undefined;
+    }
+
+    async getInquiriesByBuyer(buyerId: number): Promise<Inquiry[]> {
+      const qs = await this.inquiriesCol.where("buyerId", "==", buyerId).get();
+      return qs.docs.map(d => d.data() as Inquiry);
+    }
+
+    async getInquiriesBySupplier(supplierId: number): Promise<Inquiry[]> {
+      const qs = await this.inquiriesCol.where("supplierId", "==", supplierId).get();
+      return qs.docs.map(d => d.data() as Inquiry);
+    }
+
+    async createNotification(notification: InsertNotification): Promise<Notification> {
+      const id = await this.nextId("notifications");
+      const doc = { ...notification, id, createdAt: new Date(), read: false } as any;
+      await this.notificationsCol.doc(String(id)).set(doc);
+      return doc as Notification;
+    }
+
+    async getNotificationsByUser(userId: number): Promise<Notification[]> {
+      const qs = await this.notificationsCol.where("userId", "==", userId).get();
+      return qs.docs.map(d => d.data() as Notification);
+    }
+
+    async getUnreadNotificationsCount(userId: number): Promise<number> {
+      const qs = await this.notificationsCol.where("userId", "==", userId).where("read", "==", false).get();
+      return qs.size;
+    }
+
+    async markNotificationAsRead(id: number): Promise<Notification | undefined> {
+      const ref = this.notificationsCol.doc(String(id));
+      const snap = await ref.get();
+      if (!snap.exists) return undefined;
+      const updated = { ...(snap.data() as Notification), read: true };
+      await ref.set(updated, { merge: true });
+      return updated as Notification;
+    }
+
+    async markAllNotificationsAsRead(userId: number): Promise<void> {
+      const qs = await this.notificationsCol.where("userId", "==", userId).get();
+      const batch = db.batch();
+      qs.docs.forEach(doc => batch.set(doc.ref, { ...doc.data(), read: true }, { merge: true }));
+      await batch.commit();
+    }
+
+    async deleteNotification(id: number): Promise<boolean> {
+      await this.notificationsCol.doc(String(id)).delete();
+      return true;
+    }
+  }
+
+  storageImpl = new FirestoreStorage();
+  }
+} else {
+  throw new Error("Firestore is required");
+}
+
+export const storage: IStorage = storageImpl;

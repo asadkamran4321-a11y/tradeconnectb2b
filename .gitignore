@@ -23,3 +23,19 @@ client/dist/
 server/*.local
 public/uploads/
 *.tsbuildinfo
+
+# Sensitive keys and credentials
+deploy_ssh_key
+cookies.txt
+*.pem
+*.key
+*.p12
+*.crt
+
+# Deployment scripts with sensitive data
+deploy_with_password.sh
+complete_setup.sh
+finalize_deployment.sh
+setup_and_deploy.sh
+*.sh
+!deploy.sh

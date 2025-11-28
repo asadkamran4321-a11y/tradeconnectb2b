@@ -1,6 +1,5 @@
 import * as SibApiV3Sdk from '@sendinblue/client';
 import crypto from 'crypto';
-import { sendEmailWithSendGrid } from './sendgridService';
 
 if (!process.env.BREVO_API_KEY && process.env.NODE_ENV === 'production') {
   throw new Error("BREVO_API_KEY environment variable must be set");
@@ -59,33 +58,10 @@ export async function sendEmail(params: EmailParams): Promise<{ success: boolean
       errorMessage = error.message;
     }
 
-    // If Brevo fails, try SendGrid as fallback
-    console.log('Brevo failed, trying SendGrid as fallback...');
-    
-    try {
-      const sendGridResult = await sendEmailWithSendGrid({
-        to: params.to,
-        subject: params.subject,
-        html: params.htmlContent,
-        text: params.textContent || params.htmlContent.replace(/<[^>]*>/g, '')
-      });
-
-      if (sendGridResult.success) {
-        console.log('Email sent successfully via SendGrid fallback');
-        return { success: true };
-      } else {
-        return {
-          success: false,
-          error: `Both email services failed. Brevo: ${errorMessage}, SendGrid: ${sendGridResult.error}`
-        };
-      }
-    } catch (sendGridError: any) {
-      console.error('SendGrid fallback also failed:', sendGridError);
-      return {
-        success: false,
-        error: `Both email services failed. Brevo: ${errorMessage}, SendGrid: ${sendGridError.message || 'Unknown error'}`
-      };
-    }
+    return {
+      success: false,
+      error: errorMessage
+    };
   }
 }
 
