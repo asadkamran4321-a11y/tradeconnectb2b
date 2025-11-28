@@ -24,7 +24,7 @@ export interface IStorage {
   getSupplierByUserId(userId: number): Promise<Supplier | undefined>;
   getSuppliers(search?: string, location?: string): Promise<Supplier[]>;
   updateSupplier(id: number, data: Partial<Supplier>): Promise<Supplier | undefined>;
-  suspendSupplier(supplierId: number, reason: string): Promise<boolean>;
+  suspendSupplier(supplierId: number, suspendedBy?: number, reason?: string): Promise<boolean>;
   activateSupplier(supplierId: number): Promise<boolean>;
   restoreRejectedSupplier(supplierId: number, restoredBy?: number): Promise<boolean>;
 
@@ -70,6 +70,10 @@ export interface IStorage {
   rejectProduct(id: number, rejectedBy?: number, notes?: string): Promise<boolean>;
   restoreProduct(id: number, restoredBy?: number): Promise<Product | undefined>;
   getAllProductsForAdmin(): Promise<Product[]>;
+  getApprovedProducts(): Promise<Product[]>;
+  getSuspendedProducts(): Promise<Product[]>;
+  suspendProduct(productId: number, suspendedBy: number, reason?: string): Promise<Product | undefined>;
+  unsuspendProduct(productId: number): Promise<Product | undefined>;
 
   // Inquiry operations
   createInquiry(inquiry: InsertInquiry): Promise<Inquiry>;
@@ -79,11 +83,15 @@ export interface IStorage {
   updateInquiry(id: number, data: Partial<Inquiry>): Promise<Inquiry | undefined>;
   getAllInquiries(): Promise<Inquiry[]>;
   getPendingInquiries(): Promise<any[]>;
+  getPendingInquiriesForAdmin(): Promise<any[]>;
   getApprovedInquiries(): Promise<Inquiry[]>;
   getRejectedInquiries(): Promise<Inquiry[]>;
   approveInquiry(inquiryId: number, adminId?: number): Promise<Inquiry | undefined>;
   rejectInquiry(inquiryId: number, reason: string): Promise<boolean>;
   replyToInquiry(id: number, reply: string): Promise<Inquiry | undefined>;
+  buyerReplyToInquiry(id: number, reply: string): Promise<Inquiry | undefined>;
+  deleteInquiry(id: number): Promise<Inquiry | undefined>;
+  recoverInquiry(id: number): Promise<Inquiry | undefined>;
 
   // Saved products operations
   saveLikeProduct(data: InsertSavedProduct): Promise<SavedProduct>;
@@ -141,9 +149,16 @@ export interface IStorage {
   verifySupplier(supplierId: number, verified: boolean): Promise<Supplier | undefined>;
   rejectSupplier(supplierId: number, rejectedBy: number, reason?: string): Promise<Supplier | undefined>;
   getRejectedSuppliers(): Promise<Supplier[]>;
-  deleteSupplier(supplierId: number): Promise<boolean>;
+  getSuspendedSuppliers(): Promise<Supplier[]>;
+  getDeletedSuppliers(): Promise<Supplier[]>;
+  restoreSupplier(supplierId: number): Promise<Supplier | undefined>;
+  deleteSupplier(supplierId: number, deletedBy?: number): Promise<boolean>;
   getAllSuppliersForAdmin(): Promise<Supplier[]>;
+  getPendingSuppliersForAdmin(): Promise<any[]>;
   getAllBuyersForAdmin(): Promise<Buyer[]>;
+  getPendingUserApprovals(): Promise<User[]>;
+  approveUser(userId: number, approvedBy: number): Promise<User | undefined>;
+  rejectUser(userId: number): Promise<boolean>;
 
   // Blog post operations
   createBlogPost(blogPost: InsertBlogPost & { authorId: number }): Promise<BlogPost>;
@@ -176,11 +191,11 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private users: Map<number, User> = new Map();
-  private supplierProfiles: Map<number, Supplier> = new Map();
-  private buyerProfiles: Map<number, Buyer> = new Map();
+  private supplierProfiles: Map<number, any> = new Map();
+  private buyerProfiles: Map<number, any> = new Map();
   private categories: Map<number, Category> = new Map();
-  private products: Map<number, Product> = new Map();
-  private inquiries: Map<number, Inquiry> = new Map();
+  private products: Map<number, any> = new Map();
+  private inquiries: Map<number, any> = new Map();
   private savedProducts: Map<number, SavedProduct> = new Map();
   private followedSuppliers: Map<number, FollowedSupplier> = new Map();
   private notifications: Map<number, Notification> = new Map();
@@ -220,7 +235,7 @@ export class MemStorage implements IStorage {
       this.createCategory({
         name: cat.name,
         icon: cat.icon
-      });
+      } as any);
     });
   }
 
@@ -293,6 +308,7 @@ export class MemStorage implements IStorage {
       description: supplier.description || null,
       location: supplier.location || null,
       website: supplier.website || null,
+      companyWebsite: (supplier as any).companyWebsite ?? null,
       phone: supplier.phone || null,
       profileImage: supplier.profileImage || null,
       userId: supplier.userId,
@@ -311,18 +327,31 @@ export class MemStorage implements IStorage {
       contactPhone: supplier.contactPhone || null,
       socialMediaLinkedIn: supplier.socialMediaLinkedIn || null,
       whatsappNumber: supplier.whatsappNumber || null,
+      socialMediaYoutube: (supplier as any).socialMediaYoutube ?? null,
+      socialMediaFacebook: (supplier as any).socialMediaFacebook ?? null,
+      socialMediaTiktok: (supplier as any).socialMediaTiktok ?? null,
+      socialMediaInstagram: (supplier as any).socialMediaInstagram ?? null,
+      socialMediaPinterest: (supplier as any).socialMediaPinterest ?? null,
+      socialMediaX: (supplier as any).socialMediaX ?? null,
       // Main Product Category
       mainProductCategory: supplier.mainProductCategory || null,
       // Compliance & Legal
       businessLicenseUrl: supplier.businessLicenseUrl || null,
+      businessLicenseFileName: (supplier as any).businessLicenseFileName ?? null,
       productCertificationsUrl: supplier.productCertificationsUrl || null,
+      productCertificationsFileName: (supplier as any).productCertificationsFileName ?? null,
       exportImportLicenseUrl: supplier.exportImportLicenseUrl || null,
+      exportImportLicenseFileName: (supplier as any).exportImportLicenseFileName ?? null,
       // Additional Company Info
       companyProfileUrl: supplier.companyProfileUrl || null,
+      companyProfileFileName: (supplier as any).companyProfileFileName ?? null,
       companyLogoUrl: supplier.companyLogoUrl || null,
+      companyLogoFileName: (supplier as any).companyLogoFileName ?? null,
       factoryPhotosUrl: supplier.factoryPhotosUrl || null,
+      factoryPhotosFileName: (supplier as any).factoryPhotosFileName ?? null,
       introVideoUrl: supplier.introVideoUrl || null,
       auditReportsUrl: supplier.auditReportsUrl || null,
+      auditReportsFileName: (supplier as any).auditReportsFileName ?? null,
       // Shipping Methods
       shippingMethods: supplier.shippingMethods || [],
       incotermsSupported: supplier.incotermsSupported || [],
@@ -333,6 +362,18 @@ export class MemStorage implements IStorage {
       // Onboarding status
       onboardingCompleted: supplier.onboardingCompleted || false,
       onboardingStep: supplier.onboardingStep || 1,
+      profileDraftData: supplier.profileDraftData ?? null,
+      agreesToTerms: (supplier as any).agreesToTerms ?? false,
+      agreesToPrivacy: (supplier as any).agreesToPrivacy ?? false,
+      declaresInfoAccurate: (supplier as any).declaresInfoAccurate ?? false,
+      rejectedBy: null,
+      rejectedAt: null,
+      rejectionReason: null,
+      suspendedBy: null,
+      suspendedAt: null,
+      suspensionReason: null,
+      deletedBy: null,
+      deletedAt: null,
     };
     this.supplierProfiles.set(newSupplier.id, newSupplier);
 
@@ -574,7 +615,18 @@ export class MemStorage implements IStorage {
   }
 
   async restoreProduct(id: number, restoredBy?: number): Promise<Product | undefined> {
-    return await this.recoverProduct(id);
+    const product = this.products.get(id);
+    if (!product) return undefined;
+    const updated = {
+      ...product,
+      status: 'pending',
+      deletedAt: null,
+      deletedBy: null,
+      restoredBy: restoredBy ?? null,
+      restoredAt: new Date(),
+    };
+    this.products.set(id, updated);
+    return updated;
   }
 
   async getAllProductsForAdmin(): Promise<Product[]> {
@@ -682,6 +734,31 @@ export class MemStorage implements IStorage {
       unit: product.unit || 'piece',
       images: product.images || [],
       specifications: product.specifications || null,
+      materials: (product as any).materials ?? null,
+      color: (product as any).color ?? null,
+      size: (product as any).size ?? null,
+      weight: (product as any).weight ?? null,
+      dimensions: (product as any).dimensions ?? null,
+      shippingTerms: (product as any).shippingTerms ?? null,
+      incoterms: (product as any).incoterms ?? null,
+      packagingDetails: (product as any).packagingDetails ?? null,
+      leadTime: (product as any).leadTime ?? null,
+      paymentTerms: (product as any).paymentTerms ?? null,
+      certifications: (product as any).certifications ?? [],
+      qualityGrade: (product as any).qualityGrade ?? null,
+      origin: (product as any).origin ?? null,
+      supplyCapacity: (product as any).supplyCapacity ?? null,
+      moq: product.moq ?? null,
+      rejectedBy: null,
+      rejectedAt: null,
+      rejectionReason: null,
+      suspendedBy: null,
+      suspendedAt: null,
+      suspensionReason: null,
+      restoredBy: null,
+      restoredAt: null,
+      sourceUrl: (product as any).sourceUrl ?? null,
+      videoUrl: (product as any).videoUrl ?? null,
     };
     this.products.set(newProduct.id, newProduct);
     
@@ -743,7 +820,7 @@ export class MemStorage implements IStorage {
           products.sort((a, b) => Number(b.rating || 0) - Number(a.rating || 0));
           break;
         default:
-          products.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+          products.sort((a, b) => (b.createdAt ? b.createdAt.getTime() : 0) - (a.createdAt ? a.createdAt.getTime() : 0));
       }
     }
     
@@ -793,9 +870,33 @@ export class MemStorage implements IStorage {
       unit: product.unit || 'piece',
       images: product.images || [],
       specifications: product.specifications || null,
-      size: product.size ?? null,
+      materials: (product as any).materials ?? null,
+      color: (product as any).color ?? null,
+      size: (product as any).size ?? null,
+      weight: (product as any).weight ?? null,
+      dimensions: (product as any).dimensions ?? null,
+      shippingTerms: (product as any).shippingTerms ?? null,
+      incoterms: (product as any).incoterms ?? null,
+      packagingDetails: (product as any).packagingDetails ?? null,
+      leadTime: (product as any).leadTime ?? null,
+      paymentTerms: (product as any).paymentTerms ?? null,
+      certifications: (product as any).certifications ?? [],
+      qualityGrade: (product as any).qualityGrade ?? null,
+      origin: (product as any).origin ?? null,
+      supplyCapacity: (product as any).supplyCapacity ?? null,
+      moq: product.moq ?? null,
       deletedAt: null,
       deletedBy: null,
+      rejectedBy: null,
+      rejectedAt: null,
+      rejectionReason: null,
+      suspendedBy: null,
+      suspendedAt: null,
+      suspensionReason: null,
+      restoredBy: null,
+      restoredAt: null,
+      sourceUrl: (product as any).sourceUrl ?? null,
+      videoUrl: (product as any).videoUrl ?? null,
     };
     this.products.set(newProduct.id, newProduct);
 
@@ -959,9 +1060,10 @@ export class MemStorage implements IStorage {
         productName: product?.name || 'General Inquiry',
       };
     }).sort((a, b) => {
-      // Sort by status: pending first, then replied, then deleted
-      const statusOrder = { pending: 1, replied: 2, deleted: 3 };
-      return statusOrder[a.status] - statusOrder[b.status];
+      const statusOrder: Record<string, number> = { pending: 1, replied: 2, deleted: 3 };
+      const sa = a.status ?? 'pending';
+      const sb = b.status ?? 'pending';
+      return (statusOrder[sa] ?? 99) - (statusOrder[sb] ?? 99);
     });
   }
 
@@ -1502,6 +1604,7 @@ export class MemStorage implements IStorage {
       id: this.currentAdminNotificationId++,
       read: false,
       createdAt: new Date(),
+      relatedId: (notification as any).relatedId ?? null,
     };
     this.adminNotifications.set(newAdminNotification.id, newAdminNotification);
     return newAdminNotification;
@@ -1509,7 +1612,7 @@ export class MemStorage implements IStorage {
 
   async getAdminNotifications(): Promise<AdminNotification[]> {
     return Array.from(this.adminNotifications.values()).sort((a, b) => 
-      new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()
+      (b.createdAt ? b.createdAt.getTime() : 0) - (a.createdAt ? a.createdAt.getTime() : 0)
     );
   }
 
@@ -1618,7 +1721,6 @@ export class MemStorage implements IStorage {
       isRead: notification.isRead ?? null,
       actionUrl: notification.actionUrl ?? null,
       actionText: notification.actionText ?? null,
-      relatedId: notification.relatedId ?? null,
       readAt: null,
     };
     this.notifications.set(newNotification.id, newNotification);
@@ -1628,7 +1730,7 @@ export class MemStorage implements IStorage {
   async getNotificationsByUser(userId: number): Promise<Notification[]> {
     return Array.from(this.notifications.values())
       .filter(n => n.userId === userId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => (b.createdAt ? b.createdAt.getTime() : 0) - (a.createdAt ? a.createdAt.getTime() : 0));
   }
 
   async markNotificationAsRead(notificationId: number): Promise<Notification | undefined> {
@@ -2868,6 +2970,8 @@ export class MemStorage implements IStorage {
       approvedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      title: review.title ?? null,
+      comment: review.comment ?? null,
     };
     this.productReviews.set(newReview.id, newReview);
     return newReview;
@@ -2877,7 +2981,7 @@ export class MemStorage implements IStorage {
     // Only return approved reviews for public access
     return Array.from(this.productReviews.values())
       .filter(review => review.productId === productId && review.isApproved)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      .sort((a, b) => (b.createdAt ? b.createdAt.getTime() : 0) - (a.createdAt ? a.createdAt.getTime() : 0));
   }
 
   async getProductReviewById(id: number): Promise<ProductReview | undefined> {
@@ -2981,7 +3085,7 @@ export class MemStorage implements IStorage {
     // Only return approved comments for public access
     return Array.from(this.reviewComments.values())
       .filter(comment => comment.reviewId === reviewId && comment.isApproved)
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      .sort((a, b) => (a.createdAt ? a.createdAt.getTime() : 0) - (b.createdAt ? b.createdAt.getTime() : 0));
   }
 
   async getReviewCommentById(id: number): Promise<ReviewComment | undefined> {
@@ -3042,6 +3146,11 @@ export class MemStorage implements IStorage {
       publishedAt: blogPost.status === 'published' ? now : null,
       createdAt: now,
       updatedAt: now,
+      excerpt: blogPost.excerpt ?? null,
+      featuredImage: (blogPost as any).featuredImage ?? null,
+      tags: blogPost.tags ?? [],
+      metaTitle: (blogPost as any).metaTitle ?? null,
+      metaDescription: (blogPost as any).metaDescription ?? null,
     };
     this.blogPosts.set(id, newBlogPost);
     return newBlogPost;
@@ -3052,7 +3161,7 @@ export class MemStorage implements IStorage {
     if (status) {
       posts = posts.filter(post => post.status === status);
     }
-    return posts.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+    return posts.sort((a, b) => (b.createdAt ? b.createdAt.getTime() : 0) - (a.createdAt ? a.createdAt.getTime() : 0));
   }
 
   async getBlogPostById(id: number): Promise<BlogPost | undefined> {
@@ -3139,19 +3248,20 @@ if (useFirestore) {
     throw new Error("Firestore initialization failed");
   } else {
 
+  const fdb = db as FirebaseFirestore.Firestore;
   class FirestoreStorage extends MemStorage {
-    private usersCol = db.collection("users");
-    private suppliersCol = db.collection("suppliers");
-    private buyersCol = db.collection("buyers");
-    private categoriesCol = db.collection("categories");
-    private productsCol = db.collection("products");
-    private inquiriesCol = db.collection("inquiries");
-    private notificationsCol = db.collection("notifications");
-    private countersCol = db.collection("counters");
+    private usersCol = fdb.collection("users");
+    private suppliersCol = fdb.collection("suppliers");
+    private buyersCol = fdb.collection("buyers");
+    private categoriesCol = fdb.collection("categories");
+    private productsCol = fdb.collection("products");
+    private inquiriesCol = fdb.collection("inquiries");
+    private notificationsCol = fdb.collection("notifications");
+    private countersCol = fdb.collection("counters");
 
     private async nextId(key: string): Promise<number> {
       try {
-        const id = await db.runTransaction(async t => {
+        const id = await fdb.runTransaction(async t => {
           const doc = this.countersCol.doc(key);
           const snap = await t.get(doc);
           const current = snap.exists ? (snap.data() as any).current || 0 : 0;
@@ -3377,7 +3487,7 @@ if (useFirestore) {
 
     async markAllNotificationsAsRead(userId: number): Promise<void> {
       const qs = await this.notificationsCol.where("userId", "==", userId).get();
-      const batch = db.batch();
+      const batch = fdb.batch();
       qs.docs.forEach(doc => batch.set(doc.ref, { ...doc.data(), read: true }, { merge: true }));
       await batch.commit();
     }
